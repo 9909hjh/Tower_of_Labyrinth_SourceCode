@@ -6,12 +6,9 @@
 
 #include "Character/Weapon/EquipSMActor.h"
 #include "NiagaraComponent.h"
-//#include "GameplayEffectTypes.h"
 #include "KatanaCharacterBase.generated.h"
 
-/**
- * 
- */
+
 UCLASS()
 class GRADUATEPROJECT_API AKatanaCharacterBase : public APlayerCharacterBase
 {
@@ -136,17 +133,6 @@ public:
 	/*UFUNCTION(BlueprintCallable, Category = "State|Buff")
 	UNiagaraSystem* OnElementalHitVFX(UNiagaraSystem* FireHit, UNiagaraSystem* IceHit, UNiagaraSystem* FireNIceHit);*/
 
-
-	//------//
-	/*삭제 예정*/
-
-	//임시 범위
-	float Radius = 1000;
-	// 임시 백터
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "KatanaCharacterBase|AttackState", meta = (AllowPrivateAccess = "true"))
-	FVector StoredRollDirection;
-	// 방향 백터 저장 변수
-	FVector LastInputDirection = FVector::ZeroVector;
 
 	// Static Mesh Component 변수
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
@@ -285,9 +271,6 @@ protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 
-	//UPROPERTY(BlueprintReadOnly)
-	//class UAbilitySystemCompBase* AbilitySystemComponent;
-
 private:
 
 	// 카메라 컴포넌트
@@ -303,9 +286,6 @@ private:
 
 	bool bIsTargetEnemy = true;
 
-	//캐릭터 적 록온
-	
-	//bool bIsTargetEnemy = false;
 };
 
 
