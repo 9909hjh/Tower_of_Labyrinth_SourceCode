@@ -40,12 +40,6 @@ StoredRollDirection(FVector::ZeroVector)
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	// Static Mesh Component 생성
-	//EquipWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
-	////EquipWeaponMesh->SetupAttachment(GetMesh(), "R_Hand_Weapon");
-	//EquipWeaponMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "R_Hand_Weapon");
-	//EquipWeaponMesh->SetMobility(EComponentMobility::Movable); // 추가
-
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 300.0f;
@@ -55,9 +49,6 @@ StoredRollDirection(FVector::ZeroVector)
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
-	/*DieCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DieCamera"));
-	DieCamera->SetupAttachment(RootComponent);
-	DieCamera->bUsePawnControlRotation = false;*/
 
 	// Configure character movement
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
@@ -148,11 +139,7 @@ void AKatanaCharacterBase::MoveForward(float Value)
 {
 	if ((Controller != nullptr) && (Value != 0.0f))
 	{
-		//ForwardInputValue = Value;
-		/*if (GEngine)
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Example text that prints a float: %f"), Value));
-		*/
-
+		
 		if (bisTryMove)
 		{
 			// find out which way is forward
@@ -338,9 +325,6 @@ void AKatanaCharacterBase::CurrentSuperArmour()
 void AKatanaCharacterBase::PlaySuperArmourSkillState()
 {
 	ChangeSkillState(EPlayerSkillState::SUPER_ARMOUR);
-	//ChangePlayerState(EPlayerActionState::SUPER_ARMOUR);
-	//if (GEngine)
-		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Example text that prints a float: %f"), bIsAttack));
 }
 
 void AKatanaCharacterBase::PlayNoneSuperArmourSkillState()
@@ -493,30 +477,6 @@ AActor* AKatanaCharacterBase::FindTargetEnemy()
 // 카메라 회전
 void AKatanaCharacterBase::DieCameraMove_Implementation()
 {
-	/*APlayerController* PlayerControllerRef = GWorld->GetFirstPlayerController();
-
-	PlayerControllerRef->SetViewTargetWithBlend(this, 0.2f, VTBlend_Cubic, 3.0f);*/
-	//if (IsValid(PlayerControllerRef))
-	//{
-
-	//	PlayerControllerRef->SetShowMouseCursor(true);
-
-	//	/*if (IsValid(FollowCamera) && IsValid(DieCamera))
-	//	{
-	//		FollowCamera->SetActive(false);
-	//		DieCamera->SetActive(true);
-	//	}*/
-
-	//	PlayerControllerRef->SetViewTargetWithBlend(this, 0.2f, VTBlend_Cubic, 3.0f);
-
-	//	FInputModeUIOnly UIOnlyInputMode;
-	//	UIOnlyInputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-
-	//	PlayerControllerRef->SetInputMode(UIOnlyInputMode);
-	//}
-
-	//float delayTime = 5.0f; // 5초 후에 마을로 돌아갑니다.
-	//GetWorldTimerManager().SetTimer(TimerHandle_ReturnToVillage, this, &AKatanaCharacterBase::ReturnToVillage, delayTime, false);
 }
 
 
@@ -612,9 +572,6 @@ void AKatanaCharacterBase::ChangePlayerState(EPlayerActionState ChangeState)
 		bisTryJump = false;
 		bisRolling = false;
 		HandleDie();
-		/*DieAction();
-		DieCameraMove();*/
-		//케릭터가 죽으면 카메라를 위로 올려보네기.
 
 		break;
 	default:
@@ -797,8 +754,3 @@ UNiagaraSystem* AKatanaCharacterBase::OnElementalSlashVFX(UNiagaraSystem* FireSl
 
 	return NormalSlash;
 }
-
-//UNiagaraSystem* AKatanaCharacterBase::OnElementalHitVFX(UNiagaraSystem* FireHit, UNiagaraSystem* IceHit, UNiagaraSystem* FireNIceHit)
-//{
-//
-//}
