@@ -24,21 +24,19 @@ MaxGuard(0.0f), bGuardSuperArmour(false), bSkillSuperArmour(false), bSpecialSkil
 Current_Player_State(EPlayerActionState::NONE),
 Current_Skill_State(EPlayerSkillState::NONE),
 bisTryMove(true), bIsAttack(true),
-bisTryJump(true), bisRolling(true),
+bisTryJump(true), bisRolling(true), bIsattackcount(true), AttackCountNumber(0),
 LockOnRange(1000.f), bIsLockOn(false), ElementalAttack(false), ElementalAttack_Icy(false),
 StoredRollDirection(FVector::ZeroVector)
 {
-	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
-	// set our turn rates for input
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
 
-	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
+
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -49,10 +47,9 @@ StoredRollDirection(FVector::ZeroVector)
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
-
 	// Configure character movement
-	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f); // ...at this rotation rate
+	GetCharacterMovement()->bOrientRotationToMovement = true;	
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
 	GetCharacterMovement()->JumpZVelocity = 1000.f;
 	GetCharacterMovement()->AirControl = 0.2f;
 }
@@ -62,7 +59,7 @@ void AKatanaCharacterBase::SetupPlayerInputComponent(class UInputComponent* Play
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
-	
+
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AKatanaCharacterBase::PlayerStartJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AKatanaCharacterBase::PlayerStopJump);
 
@@ -79,6 +76,8 @@ void AKatanaCharacterBase::SetupPlayerInputComponent(class UInputComponent* Play
 
 	PlayerInputComponent->BindAction("LockOn", IE_Pressed, this, &AKatanaCharacterBase::TryLockOn);
 	PlayerInputComponent->BindAction("Rolling", IE_Pressed, this, &AKatanaCharacterBase::TryRolling);
+
+	PlayerInputComponent->BindAction("LockOnNextTarget", IE_Pressed, this, &AKatanaCharacterBase::TryLockOnNextTarget);
 
 	// handle touch devices
 	PlayerInputComponent->BindTouch(IE_Pressed, this, &AKatanaCharacterBase::TouchStarted);
@@ -131,7 +130,7 @@ void AKatanaCharacterBase::PlayerStopJump()
 	{
 		StopJumping();
 	}
-	
+
 }
 
 // 이 부분 바꿈
@@ -139,18 +138,14 @@ void AKatanaCharacterBase::MoveForward(float Value)
 {
 	if ((Controller != nullptr) && (Value != 0.0f))
 	{
-		
 		if (bisTryMove)
 		{
-			// find out which way is forward
+			
 			const FRotator Rotation = Controller->GetControlRotation();
 			const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-			// get forward vector
 			const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 			AddMovementInput(Direction, Value);
-
-			//LastInputDirection = Direction;
 		}
 	}
 }
@@ -162,18 +157,13 @@ void AKatanaCharacterBase::MoveRight(float Value)
 	{
 		if (bisTryMove)
 		{
-			// find out which way is right
 			const FRotator Rotation = Controller->GetControlRotation();
 			const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-			// get right vector 
 			const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-			// add movement in that direction
 			AddMovementInput(Direction, Value);
-
-			//LastInputDirection = Direction;
 		}
-		
+
 	}
 }
 
@@ -213,13 +203,12 @@ FRotator AKatanaCharacterBase::Direction_Camera_LookingAt()
 {
 	if (bIsLockOn == true)
 	{
-		//FVector Look = (FollowCamera->GetForwardVector() * 1000.f) + this->GetActorLocation();
 		FRotator PlayerRotToCamera = UKismetMathLibrary::FindLookAtRotation(this->GetActorLocation(), LockedOnEnemy->GetActorLocation());
 		SetActorRotation(FRotator(0, PlayerRotToCamera.Yaw, 0));
 
 		return PlayerRotToCamera;
 	}
-	
+
 
 	return FRotator::ZeroRotator;
 }
@@ -228,20 +217,25 @@ FRotator AKatanaCharacterBase::Direction_Camera_LookingAt()
 // 공격 시작
 void AKatanaCharacterBase::StartAttack()
 {
-	// 태그 형식의 방법
-	//if (AbilitySystemComponent->GetTagCount(FGameplayTag::RequestGameplayTag(TEXT("Effect.Player.SuperSkill"))) > 0) return;
+	bIsattackcount = true;
+
+	if (AttackCountNumber <= 1)
+	{
+		AttackCountNumber++;
+	}
 
 	// 기본 상태가 아닌 상태 때
 	if (Current_Skill_State != EPlayerSkillState::NONE) return;
-	if (Current_Player_State != EPlayerActionState::NONE) return;
+	if (Current_Player_State != EPlayerActionState::NONE)
+	{
 
-	if (!GetMesh()->GetAnimInstance()->Montage_IsPlaying(RollingMontage) 
+		return;
+	}
+	if (!GetMesh()->GetAnimInstance()->Montage_IsPlaying(RollingMontage)
 		&& !GetMesh()->GetAnimInstance()->Montage_IsPlaying(HitMontage)
 		&& IsAlive() && bisTryMove)
 	{
 		ChangePlayerState(EPlayerActionState::ATTACK);
-		//카메라를 보는 방향으로 회전 /*이걸 삭제한 이유는 록온을 하면 그 방향으로 돌아가게 만들기 위해서다.*/
-		//Direction_Camera_LookingAt();
 
 		PlayAnimMontage(BasicAttackAnimation, GetAttackSpeed()); // 여기에 광폭화 스킬 공속 변화 시키면 됌.
 	}
@@ -251,11 +245,8 @@ void AKatanaCharacterBase::StartAttack()
 // 공격 끝
 void AKatanaCharacterBase::StopAttack()
 {
+	bIsattackcount = false;
 	if (Current_Player_State != EPlayerActionState::ATTACK) return;
-
-	StopAnimMontage(BasicAttackAnimation);
-	ChangePlayerState(EPlayerActionState::NONE);
-	//ChangeLockOnState(EPlayerLockOnState::NONE);
 }
 
 
@@ -286,10 +277,10 @@ void AKatanaCharacterBase::OnDamaged_Implementation(float DamageAmount, const FH
 	FVector hitLocation = DamageCauser->GetActorLocation();
 	FVector hitDirection = (hitLocation - attackLocation).GetSafeNormal();
 
-	// 맞는 액터의 방향과 맞은 방향의 내적을 구합니다.
+	// 맞는 액터의 방향과 맞은 방향의 내적을 구함
 	FVector actorForwardVector = GetActorForwardVector();
 	float dotProduct = FVector::DotProduct(hitDirection, actorForwardVector);
-	
+
 	if (dotProduct > 0.0f)
 	{
 		// 맞은 방향이 액터의 전방일 경우
@@ -305,8 +296,6 @@ void AKatanaCharacterBase::OnDamaged_Implementation(float DamageAmount, const FH
 		SetDashDelay();
 
 	}
-
-	//ChangePlayerState(EPlayerActionState::NONE);
 }
 
 void AKatanaCharacterBase::OnGuardChanged_Implementation(float DeltaGuard, const FGameplayTagContainer& SourceTags)
@@ -338,19 +327,23 @@ void AKatanaCharacterBase::StopSkillState()
 }
 
 
+void AKatanaCharacterBase::StopAttackState()
+{
+	ChangePlayerState(EPlayerActionState::NONE);
+}
 
 
 void AKatanaCharacterBase::TryRolling_Implementation()
 {
 	if (bisRolling == false) return;
 
-	if (GetCharacterMovement()->IsFalling()) 
+	if (GetCharacterMovement()->IsFalling())
 	{
 		return;
 	}
 
 	if (GetMesh()->GetAnimInstance()->Montage_IsPlaying(HitMontage) ||
-		GetMesh()->GetAnimInstance()->Montage_IsPlaying(RollingMontage)) 
+		GetMesh()->GetAnimInstance()->Montage_IsPlaying(RollingMontage))
 	{
 		return;
 	}
@@ -366,8 +359,8 @@ void AKatanaCharacterBase::TryRolling_Implementation()
 	}
 
 	PlayAnimMontage(RollingMontage, 1.0f);
-	//SetDashDelay();
-	
+
+
 }
 
 // 공격 도중에 키보드로 임력한 방향으로 바꿔주는 함수..
@@ -380,7 +373,6 @@ FVector AKatanaCharacterBase::GetInputVector()
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-		// get input vector based on player controller's input
 		const float ForwardValue = InputComponent->GetAxisValue("MoveForward");
 		const float RightValue = InputComponent->GetAxisValue("MoveRight");
 		InputVector = (ForwardValue * FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X))
@@ -392,31 +384,35 @@ FVector AKatanaCharacterBase::GetInputVector()
 	return InputVector;
 }
 
-// 노티파이에 있다. 삭제 예정이다.
-void AKatanaCharacterBase::OnRollingEnd()
-{
-	// 저장된 입력 방향에 따라 회전 변경
-	if (StoredRollDirection.SizeSquared() > 0.f)
-	{
-		SetActorRotation(StoredRollDirection.Rotation());
-	}
-}
-
 //록온의 범위를 지정하고 록온할 적이 있으면 활성화검사
 void AKatanaCharacterBase::TryLockOn_Implementation()
 {
-	if (!bIsLockOn)
+	if (bIsLockOn)
 	{
-		//LockedOnEnemy = FindTargetEnemy();
-		if (FindTargetEnemy()/*LockedOnEnemy*/)
-		{
-			bIsLockOn = true;
-		}
+		// 록온이 이미 켜져있으면 끄고 타겟 해제
+		bIsLockOn = false;
+		LockedOnEnemy = nullptr;
 	}
 	else
 	{
-		bIsLockOn = false;
-		LockedOnEnemy = nullptr;
+		// 록온이 꺼져있으면 켜고 타겟 찾기
+		LockedOnEnemy = FindTargetEnemy();
+		bIsLockOn = (LockedOnEnemy != nullptr);
+	}
+}
+
+void AKatanaCharacterBase::TryLockOnNextTarget_Implementation()
+{
+	if (bIsLockOn == true)
+	{
+		// 록온이 켜져있을 때만 다음 타겟 찾기 실행
+		AActor* NewLockedOnEnemy = FindNextClosestEnemy();
+
+		if (NewLockedOnEnemy)
+		{
+			// 현재 록온을 끄고 새로운 적으로 교체
+			LockedOnEnemy = NewLockedOnEnemy;
+		}
 	}
 }
 
@@ -442,6 +438,8 @@ AActor* AKatanaCharacterBase::FindTargetEnemy()
 		false, ActorsIgnore, EDrawDebugTrace::None,
 		HitArray, true);
 
+
+
 	if (!bHit)
 	{
 		return nullptr;
@@ -452,7 +450,9 @@ AActor* AKatanaCharacterBase::FindTargetEnemy()
 
 	for (const auto& Hit : HitArray)
 	{
-		if (ACharacterBase* HitCharacter = Cast<ACharacterBase>(Hit.GetActor()))
+		ACharacterBase* HitCharacter = Cast<ACharacterBase>(Hit.GetActor());
+
+		if (HitCharacter && IsEnemyInFront(HitCharacter) && !IsWallBetween(Hit))
 		{
 			if (!HitCharacter->IsAlive())
 			{
@@ -474,16 +474,72 @@ AActor* AKatanaCharacterBase::FindTargetEnemy()
 	return LockedOnEnemy;
 }
 
+AActor* AKatanaCharacterBase::FindNextClosestEnemy()
+{
+	// 현재 록온된 적을 제외하고 가장 가까운 다른 적을 찾음
+	TArray<AActor*> ActorsToIgnore = { this, LockedOnEnemy };
+	TArray<FHitResult> HitResults;
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Emplace(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+
+	bool bHit = UKismetSystemLibrary::SphereTraceMultiForObjects(
+		GetWorld(),
+		GetActorLocation(),
+		GetActorLocation(),
+		LockOnRange,
+		ObjectTypes,
+		false,
+		ActorsToIgnore,
+		EDrawDebugTrace::None,
+		HitResults,
+		true
+	);
+
+	if (!bHit)
+	{
+		return nullptr;
+	}
+
+	float MinDistanceSquared = MAX_FLT;
+	ACharacterBase* NextClosestEnemy = nullptr;
+
+	for (const FHitResult& Hit : HitResults)
+	{
+		ACharacterBase* HitCharacter = Cast<ACharacterBase>(Hit.GetActor());
+
+		if (HitCharacter && IsEnemyInFront(HitCharacter) && !IsWallBetween(Hit))
+		{
+			if (!HitCharacter->IsAlive())
+			{
+				continue;
+			}
+
+			float DistanceSquared = FVector::DistSquared(HitCharacter->GetActorLocation(), GetActorLocation());
+
+			if (DistanceSquared < MinDistanceSquared)
+			{
+				MinDistanceSquared = DistanceSquared;
+				NextClosestEnemy = HitCharacter;
+			}
+		}
+	}
+
+	return NextClosestEnemy;
+}
+
+
 // 카메라 회전
 void AKatanaCharacterBase::DieCameraMove_Implementation()
 {
+
 }
 
 
 // 죽으면 마을로 가기
 void AKatanaCharacterBase::ReturnToVillage()
 {
-	// 마을로 이동하는 코드를 작성합니다.
+	// 마을로 이동하는 코드
 	FString levelName = "tawn"; // 마을 맵 이름
 	UGameplayStatics::OpenLevel(GetWorld(), FName(*levelName));
 }
@@ -497,11 +553,12 @@ void AKatanaCharacterBase::DieAction()
 void AKatanaCharacterBase::ChangePlayerState(EPlayerActionState ChangeState)
 {
 	if (Current_Player_State == ChangeState || Current_Player_State == EPlayerActionState::DEAD) return;
-	
+
 	// Exit
 	switch (Current_Player_State)
 	{
 	case EPlayerActionState::NONE:
+		AttackCountNumber = 0;
 		break;
 	case EPlayerActionState::ATTACK:
 		bisTryMove = true;
@@ -510,7 +567,6 @@ void AKatanaCharacterBase::ChangePlayerState(EPlayerActionState ChangeState)
 	case EPlayerActionState::ROLLING:
 		bisTryMove = true;
 		bisTryJump = true;
-		//bisRolling = true;
 		break;
 	case EPlayerActionState::SKILLATTACK:
 		bisTryMove = true;
@@ -539,6 +595,7 @@ void AKatanaCharacterBase::ChangePlayerState(EPlayerActionState ChangeState)
 	switch (ChangeState)
 	{
 	case EPlayerActionState::NONE:
+		AttackCountNumber = 0;
 		break;
 	case EPlayerActionState::ATTACK:
 		bisTryMove = false;
@@ -547,7 +604,6 @@ void AKatanaCharacterBase::ChangePlayerState(EPlayerActionState ChangeState)
 	case EPlayerActionState::ROLLING:
 		bisTryMove = false;
 		bisTryJump = false;
-		//bisRolling = false;
 		break;
 	case EPlayerActionState::SKILLATTACK:
 		bisTryMove = false;
@@ -615,7 +671,7 @@ void AKatanaCharacterBase::ChangeSkillState(EPlayerSkillState ChangeState)
 		break;
 	case EPlayerSkillState::SUPER_ARMOUR:
 		bisTryMove = false;
-		bIsAttack = false; 
+		bIsAttack = false;
 		bisTryJump = false;
 		bSkillSuperArmour = true;
 		break;
@@ -643,6 +699,7 @@ void AKatanaCharacterBase::TargetCheck()
 		// LockedOnEnemy->GetActorLocation()에서 낮은곳 보게 만들기.
 		FVector LockAtEnemyPosion = LockedOnEnemy->GetActorLocation() - FVector(0.0f, 0.0f, 50.0f);
 		FRotator PlayerRot = UKismetMathLibrary::FindLookAtRotation(this->GetActorLocation(), LockAtEnemyPosion);
+		PlayerRot.Roll = 0;
 		GetController()->SetControlRotation(PlayerRot);
 		if (!bIsAttack && bisRolling)
 		{
@@ -700,21 +757,19 @@ AEquipSMActor* AKatanaCharacterBase::SpawnWeaponActor(TSubclassOf<class AEquipSM
 }
 
 
-
-
 // 광폭화
 bool AKatanaCharacterBase::CanOverDriveSkill()
 {
-	// 최대 체력의 30%를 계산합니다.
+	// 최대 체력의 30%를 계산
 	float MaxHealthThreshold = GetMaxHealth() * 0.3f;
 
-	// 현재 체력이 최대 체력의 30% 미만인 경우 false를 반환합니다.
+	// 현재 체력이 최대 체력의 30% 미만인 경우 false를 반환
 	if (GetHealth() < MaxHealthThreshold)
 	{
 		return false;
 	}
 
-	// 스킬을 발동했으므로 true를 반환합니다.
+	// 스킬을 발동했으므로 true를 반환
 	return true;
 }
 
@@ -748,9 +803,44 @@ UNiagaraSystem* AKatanaCharacterBase::OnElementalSlashVFX(UNiagaraSystem* FireSl
 		return FireNIceSlash;
 	}
 
-	if(ElementalAttack == true) return FireSlash;
+	if (ElementalAttack == true) return FireSlash;
 
 	if (ElementalAttack_Icy == true) return IceSlash;
 
 	return NormalSlash;
+}
+
+
+bool AKatanaCharacterBase::IsEnemyInFront(ACharacterBase* Enemy) const
+{
+	///*캐릭터 기준이다 -> 몬스터가 캐릭터 바로 뒤에 있어도 록온 안한다.*/
+	//	//FVector HitCharacterDirection = (HitCharacter->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+
+	//	/*카메라 기준이다 -> 몬스터가 캐릭터 바로 뒤에 있어도 록온 한다.(카메라 바로 앞에서만 적용)*/
+	//FVector HitCharacterDirection = (HitCharacter->GetActorLocation() - FollowCamera->GetComponentLocation()).GetSafeNormal();
+
+	FVector EnemyDirection = (Enemy->GetActorLocation() - FollowCamera->GetComponentLocation()).GetSafeNormal();
+	float DotProduct = FVector::DotProduct(EnemyDirection, FollowCamera->GetForwardVector());
+	return DotProduct > 0.36f;
+}
+
+bool AKatanaCharacterBase::IsWallBetween(const FHitResult& HitResult) const
+{
+	FVector Start = GetActorLocation();
+	FVector End = HitResult.GetActor()->GetActorLocation();
+	FHitResult WallHitResult;
+
+	bool bHitWall = UKismetSystemLibrary::LineTraceSingle(
+		GetWorld(),
+		Start,
+		End,
+		UEngineTypes::ConvertToTraceType(ECC_Visibility),
+		false,
+		TArray<AActor*>(),
+		EDrawDebugTrace::None,
+		WallHitResult,
+		true
+	);
+
+	return bHitWall;
 }

@@ -8,13 +8,12 @@
 #include "NiagaraComponent.h"
 #include "KatanaCharacterBase.generated.h"
 
-
 UCLASS()
 class GRADUATEPROJECT_API AKatanaCharacterBase : public APlayerCharacterBase
 {
 	GENERATED_BODY()
 
-	
+
 
 
 public:
@@ -30,16 +29,21 @@ public:
 	void OnDamaged_Implementation(float DamageAmount, const FHitResult& HitResult, const FGameplayTagContainer& DamageTags, ACharacterBase* InstigatorCharacter, AActor* DamageCauser) override;
 	void OnGuardChanged_Implementation(float DeltaGuard, const FGameplayTagContainer& SourceTags) override;
 
-	//롤링 // 이거 나중에 그냥 어빌리티 스킬로 롤링을 구현하면 되지 않을까?
+	//롤링 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "State|Check")
-	void TryRolling();
+		void TryRolling();
 
 	// 록온
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "State|Check")
 	void TryLockOn();
 
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "State|Check")
+	void TryLockOnNextTarget();
+
 	UFUNCTION(BlueprintCallable, Category = "State|Check")
 	AActor* FindTargetEnemy();
+
+	AActor* FindNextClosestEnemy();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "State|Check")
 	void DieCameraMove();
@@ -55,7 +59,7 @@ public:
 	void ChangeSkillState(EPlayerSkillState ChangeState);
 
 	UFUNCTION(BlueprintCallable, Category = "State|Check")
-	void TargetCheck();
+		void TargetCheck();
 
 	// 점프 관련
 	void PlayerStartJump();
@@ -100,6 +104,9 @@ public:
 	void StopSkillState();
 
 
+	UFUNCTION(BlueprintCallable, Category = "State|Check")
+	void StopAttackState();
+
 	/* 버프 관련 함수*/
 
 	/* 광폭화 관련 함수*/
@@ -126,25 +133,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "State|Buff")
 	void OnIceQueenEnd();
 
-	
+
 	UFUNCTION(BlueprintPure, Category = "State|Buff")
-	UNiagaraSystem* OnElementalSlashVFX(UNiagaraSystem* FireSlash, UNiagaraSystem* IceSlash, UNiagaraSystem* FireNIceSlash, UNiagaraSystem* NormalSlash);
-
-	/*UFUNCTION(BlueprintCallable, Category = "State|Buff")
-	UNiagaraSystem* OnElementalHitVFX(UNiagaraSystem* FireHit, UNiagaraSystem* IceHit, UNiagaraSystem* FireNIceHit);*/
+		UNiagaraSystem* OnElementalSlashVFX(UNiagaraSystem* FireSlash, UNiagaraSystem* IceSlash, UNiagaraSystem* FireNIceSlash, UNiagaraSystem* NormalSlash);
 
 
-	// Static Mesh Component 변수
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
-		UStaticMeshComponent* EquipWeaponMesh;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-		float BaseTurnRate;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-		float BaseLookUpRate;
-
-	
+	bool IsEnemyInFront(ACharacterBase* Enemy) const;
+	bool IsWallBetween(const FHitResult& HitResult) const;
 
 
 private:
@@ -188,7 +183,7 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "KatanaCharacterBase|AttackState", meta = (AllowPrivateAccess = "true"))
 	bool bIsAttack; // false
 
-	// true면 점프 가능
+		// true면 점프 가능
 	UPROPERTY(VisibleAnywhere, Category = "KatanaCharacterBase|AttackState", meta = (AllowPrivateAccess = "true"))
 	bool bisTryJump;
 
@@ -203,6 +198,13 @@ private:
 	// 록온 인가?
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "KatanaCharacterBase|AttackState", meta = (AllowPrivateAccess = "true"))
 	bool bIsLockOn;
+
+	// 마우스 홀드가 아닌 클릭을 통해서도 공격이 가능한 기능을 위한 bool값
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "KatanaCharacterBase|AttackState", meta = (AllowPrivateAccess = "true"))
+	bool bIsattackcount;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "KatanaCharacterBase|AttackState", meta = (AllowPrivateAccess = "true"))
+	int AttackCountNumber;
 
 	/*애니메이션*/
 
@@ -230,7 +232,7 @@ private:
 
 	//class UItem_WeaponBase* EquippedWeapon;
 	UPROPERTY()
-	UStaticMeshComponent* EquippedWeaponMesh;
+		UStaticMeshComponent* EquippedWeaponMesh;
 
 	// 스폰된 액터
 	UPROPERTY()
@@ -257,6 +259,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = "KatanaCharacterBase|Effect", meta = (AllowPrivateAccess = "true"))
 	UNiagaraSystem* SuperArmourHitEffect;
 
+
 protected:
 	virtual void Tick(float DeltaSeconds);
 
@@ -275,17 +278,16 @@ private:
 
 	// 카메라 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-		class USpringArmComponent* CameraBoom;
+	class USpringArmComponent* CameraBoom;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-		class UCameraComponent* FollowCamera;
+	class UCameraComponent* FollowCamera;
 
 	//Die Camera
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-		class UCameraComponent* DieCamera;
+	class UCameraComponent* DieCamera;
 
 	bool bIsTargetEnemy = true;
-
 };
 
 
